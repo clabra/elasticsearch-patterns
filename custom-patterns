@@ -1,0 +1,183 @@
+####################################################################################################################################
+## ---------------------------------------------------------------------------------------------------------------------------------
+# Name:         mac-patterns
+# Args:         none 
+# Usage:        patterns_dir
+# Description:  Regex Patterns
+# Author:       Miguel Angel Cano
+# Date:		work in progress
+# Modified :    2014-12-15
+# Author:       Miguel Angel Cano
+# License:      TBD
+## ---------------------------------------------------------------------------------------------------------------------------------
+####################################################################################################################################
+# DATA TYPE 
+# F File
+####################################################################################################################################
+
+# OJO MD_PATH y MDPATH y PATH
+
+
+TERMINAL (\w+\/\d+)
+#PATH ((\/\w+)+)
+MDSEC (%{DAY}\s+%{MONTH}\s+%{MONTHDAY}\s+%{HOUR}:%{MINUTE}:%{SECOND}\s+%{YEAR})
+# pongo \. y \_
+MDID ([a-zA-Z0-9@\-\._]+)
+MDPATH (?>/(?>[\w_%!$@:.,-]+|\\.|\s+)*)+
+#MIMETYPE ((\w+|\*(;\w+=\d+\.\d+)?)/((\w+(\+\w+|;\w+=\d+\.\d+)*)|\*),?\s?)+
+MIMETYPE ((\w+|\*)/(((\w+|\*)(\+\w+|;\w+=\d+\.\d+)*)),?\s?)+
+MD5 [a-zA-Z0-9+=/\\\*]*
+DN_custom (%{WORD}=%{WORD}(\.${WORD})*(,%{WORD}=%{WORD}(\.%{WORD})*))*,*
+COOKIE (%{MDID}=%{MDID};?\s*)+
+USERAGENT ((\w+/\d+(\.\d+)*)\s*(\((([/|\.|;|\s+]?(\w+|\d+)[/|\.|;|,|\s+]?)+)*\))*\s*)*
+ACCEPTENC (%{WORD}(,\s?)?)+
+day_Base %{DAY}|\d{1,2}
+month_Base %{MONTH}|%{MONTHNUM}
+timezone_Base ([+ |-]\d{4})
+date_base  %{day_Base}(\s+|\/|-)%{month_Base}(\s+|\/|-)(%{YEAR}|%{day_Base})(\s+|\/|-|:|\t)%{HOUR}:%{MINUTE}:%{SECOND}\s+(%{timezone_Base}|%{YEAR})
+WEB_PROTO %{WORD:protocol}://(%{IP:ipsrc}|%{MDID:hostname_src})
+CACHECONTROL ((\*|\w+|\d+)[-|,|=|;|\.]?)+
+CONTENTTYPE (\w+(;%{WORD}=%{WORD})*[-|/]?)+
+# APACHE
+
+# APACHE_command %{WORD:Apache_Command} %{MDPATH}
+APACHE_command (%{WORD:Apache_Command} %{URIPATHPARAM:uri}\s*(?:(HTTP|http)/\d\.\d))?
+APACHE_Agent %{GREEDYDATA}
+APACHE_access_base (%{IP:ipsrc}|%{MDID:hostname_src})\s+(-|%{WORD})\s+(-|%{WORD})\s+\[%{date_base:timestamp}\]\s+\"%{APACHE_command:HTTP_request}\"\s+%{NUMBER:HTTP_code}\s+%{NUMBER:size}(?:\s*\"(-|%{GREEDYDATA:ApacheRefererWTF})\"\s*\"(-|%{APACHE_Agent:ApacheAgent})\")
+APACHE_error_base \[%{date_base:timestamp}\]\s+\[(?:%{MDID:who_wtf})?:(?:%{WORD:Apache_severity})?\]\s+\[pid %{NUMBER:pid}:tid %{NUMBER:tid}\]
+APACHE_clientIP \[client %{IP:ipsrc}(?::%{NUMBER:portsrc})?\]
+APACHE_srcError %{MDID:Apache_srcError}\(\d*\):
+
+# MODSECURITY
+CONFIGURATIONFILE (?>[\w_%!$@:.,-]+|\\.|\s+)*
+C_F_PATH (?>/%{CONFIGURATIONFILE:ConfigurationFile})+
+MODSEC_confFile  \[file \"%{C_F_PATH:ModSec_confFile}\"\]
+MD_PATH ([\"\(\^\[\]\{\}\)\\\a-zA-Z0-9;\+\-\|])+
+MODSEC_warn_msg -(%{GREEDYDATA:ein}\.\s+)
+#MODSEC_confFile  \[file \"%{MDPATH:ModSec_confFile}\"\]
+MODSEC_LineConf \[line \"%{NUMBER:ModSec_Line}\"\]
+MODSEC_id \[id \"%{NUMBER:ModSec_id}\"\]
+MODSEC_msg \[msg \"%{DATA:ModSec_msg}\"\]
+MODSEC_rev \[rev \"%{NUMBER:ModSec_rev}\"\]
+MODSEC_maturity \[maturity \"%{NUMBER:ModSec_maturity}\"\]
+MODSEC_accuracy \[accuracy \"%{NUMBER:ModSec_accuracy}\"\]
+MODSEC_severity \[severity \"%{WORD:ModSec_severity}\"\]
+MODSEC_tag \[tag \"%{DATA:ModSec_tag}\"\]\s*
+MODSEC_tags %{MODSEC_tag}\s*(?:%{MODSEC_tag}\s*)?(?:%{MODSEC_tag}\s*)?(?:%{MODSEC_tag}\s*)?
+MODSEC_data (\[data %{QS:ModSec_data}\])
+MODSEC_ver (\[ver %{QS:ModSec_ver}\])
+MODSEC_Pattern_Match Pattern match\s*((%{MD_PATH:Suspicious_Path})|(%{QUOTEDSTRING:Suspicious_Path}\s* at %{WORD}.))\s+
+MODSEC_base %{APACHE_error_base}\s*(?:%{APACHE_clientIP})?\s*ModSecurity(:)*\s*%{GREEDYDATA:ModSec_error_message}
+MODSEC_end \s*\[hostname \"(%{IP:ipsrc}|%{MDID:hostname_src})\"\]\s*\[uri \"%{URIPATHPARAM:ModSec_URI}\"\]\s*\[unique_id \"%{MDID:ModSec_uniqueID}\s*
+MODSEC_extended \s*%{MODSEC_confFile}\s*%{MODSEC_LineConf}\s*%{MODSEC_id}\s*%{MODSEC_msg}\s*(%{MODSEC_tag}\s*(?:%{MODSEC_tag}\s*)?(?:%{MODSEC_tag}\s*)?(?:%{MODSEC_tag}\s*))?\[hostname \"(%{IP:ipsrc}|%{MDID:hostname_src})\"\]\s*\[uri \"%{URIPATHPARAM:ModSec_URI}\"\]\s*\[unique_id \"%{MDID:ModSec_uniqueID}\s*
+MODSEC_extended2 %{MODSEC_Pattern_Match}\s*%{MODSEC_confFile}\s*%{MODSEC_LineConf}\s*%{MODSEC_id}(?:%{MODSEC_rev})?\s*%{MODSEC_msg}\s*%{MODSEC_data:ModSec_data}\s*%{MODSEC_severity}\s*%{MODSEC_ver}\s*%{MODSEC_maturity}\s*%{MODSEC_accuracy}\s*(?:%{MODSEC_tag}\s*)?\[hostname \"(%{IP:ipsrc}|%{MDID:hostname_src})\"\]\s*\[uri \"%{URIPATHPARAM:ModSec_URI}\"\]\s*\[unique_id \"%{MDID:ModSec_uniqueID}\s*
+
+MODSEC_sep \-\-%{MDID}\-\-
+MODSEC_line1 \[%{date_base}\]\s*%{MDID:ModSec_uniqueID}\s*(%{IP:ipsrc}|%{MDID:hostname_src})\s*%{NUMBER:portsrc}\s*(%{IP:ipdst}|%{MDID:hostname_dst})\s*%{NUMBER:portdst}\s*
+MODSEC_line2 %{MODSEC_sep}\s*%{APACHE_command:HTTP_request}\s*(?:Host:\s*(%{IP:ipsrc}|%{MDID:hostname_src}))?(?:\s*Connection:\s*%{MDID:MDconnection})?(?:\s*Content-Length:\s*%{NUMBER:ContentLength})?\s*
+MODSEC_line3 (?:Cache-Control:\s*%{CACHECONTROL:CacheControl})?\s*(?:Accept:\s*%{MIMETYPE:mimetypes})?\s*(?:Origin:\s*%{WEB_PROTO:origin})?\s*(?:User-Agent:\s*%{USERAGENT:UserAgent})?\s*
+MODSEC_line4 (?:Content-Type:\s*%{CONTENTTYPE:ContentType})?\s*(?:Referer:\s*%{URI:referer})?\s*(?:Accept-Encoding:\s*
+MODSEC_line5 (?:%{ACCEPTENC:wq})?\s*)?(?:Accept-Language:\s*%{CACHECONTROL:AcceptLanguage})?\s*(?:Cookie:\s*%{COOKIE:cookie})?\s*
+
+ 
+
+# WORK
+## ----------------------------------------------------------------------------------------------------------------------------------
+UA_NAME %{WORD:UA}
+TAG \[\s*%{WORD:SEC_Tag}\s*(\s*,\s*%{WORD:SEC_Tag}\s*)*\]
+SEC_TAG %{TAG}
+TAGTYPE \[tiposEtiquetas\s*=\s*\[\s*%{WORD:SEC_tag}\s*\]\s*\]
+SEC_TAGTYPE %{TAGTYPE:SEC_TagType}
+SETTAGTYPE ConjuntoTipoEtiquetas\s*%{TAGTYPE}(,\s*ConjuntoTipoEtiquetas\s*%{TAGTYPE})*
+SEC_SETTAGTYPE %{SETTAGTYPE:SEC_SetTagType}
+SEC_PROPERTIES_FILE %{FILEPATH:Properties_file}
+CDATETIME %{YEAR}[/|-]%{MONTHNUM}[/|-]%{MONTHDAY} %{HOUR}:%{MINUTE}:%{SECOND}
+FILEPATH (file:)*(/*\$*\{*%{WORD}([\.|-]%{WORD})*\}*)*
+FIELDNAME (%{WORD}([-\.@]%{WORD})*|(file:)*(/*\$*\{*%{WORD}([\.-@#]%{WORD})*\}*)*|\$\{%{URIHOST}\})
+DYNAMICDATA \[beanName=%{FIELDNAME:BeanName},\s+beanProperty=%{FIELDNAME:BeanProperty},\s+unparsedValue=%{FIELDNAME:unparsedValue}\]
+MULTILINE_LDAP_DATA %{DDSECLOG}(Configurado agente autenticación\s+\[%{FIELDNAME:SEC_Authentication_agent_wtf}\]|Configuracion de \[%{FIELDNAME:SEC_Authentication_agent_wtf}\] para el aap %{FIELDNAME:AAP_wtf})\s*\{((?:\s*\(\s*Sistema\s*LDAP:\s*%{FIELDNAME:Ldap_Name}\s*\)\s*,)?(?:\s*\(\s*Longitud\s*password\s*:\s*%{NUMBER:Password_Lenght}\s*\)\s*,\s*)?(?:\s*\(\s*Numero\s*reintentos\s*:\s*%{NUMBER:Attempt_Number}\s*\)\s*,\s*)?(?:\s*\(\s*Tipo\s*LDAP\s*:\s*%{WORD:Ldap_Type}\s*\)\s*,\s*)?(?:\s*\(\s*Banco\s*:\s*%{DN_custom:dn_wtf}\s*,*\s*\)\s*)?(?:\s*\(\s*Nombre\s*parámetro\s*password\s*:\s*%{FIELDNAME:Password_Parameter}\s*\)\s*)?(?:\s*\(\s*Grupo\s:\s*%{WORD:Group_Name_wtf}\s*\)\s*)?(?:\s*\(\s*Validar\s*grupo\s*:\s*%{WORD:Group_Validation}\s*\)\s*)?\s*)*
+
+## ----------------------------------------------------------------------------------------------------------------------------------
+##
+## Common parameters
+##
+## ----------------------------------------------------------------------------------------------------------------------------------
+
+DDSECLOG %{CDATETIME:Original_DateTime}\s+%{WORD:Severity}\s+\[(?:%{FIELDNAME:ConsumerRequestID})?\]\[(?:%{FIELDNAME:InternalRequestID})?\]\[(?:%{FIELDNAME:AAP_wtf})?\]\[(?:%{FIELDNAME:bbvauserID})?\]\[(?:%{WORD:SN_wtf})?#(?:%{WORD:SMC_wtf})?\]\s+%{FIELDNAME:Class_Name}:%{NUMBER}\s+-\s+
+DDSECGENERIC %{DDSECLOG}%{GREEDYDATA:Text_wtf}
+JBOSSERROR %{GREEDYDATA:JBOSS_error_messsage}
+INFO_Generic_etiquetas %{DDSECGENERIC}(Asignadas las etiquetas|Etiquetas válidas para esta petición:)\s*%{SEC_TAG}
+
+## ----------------------------------------------------------------------------------------------------------------------------------
+## DEBUG
+## ----------------------------------------------------------------------------------------------------------------------------------
+
+# AAPFileReader
+DEBUG_Abriendo_fichero %{DDSECLOG}Abriendo fichero de aplicaciones\s*\[%{FIELDNAME:SEC_Application_File_wtf}\]
+
+# CatalogoDummy
+DEBUG_filename %{DDSECLOG}filename: URL\s+\[%{FIELDNAME:SEC_filename:wtf}\]
+DEBUG_Recuperando %{DDSECLOG}Recuperando etiquetas para el AAP\s+\[%{FIELDNAME:AAP_wtf}\]\s+con método de autenticación\s+\[%{NUMBER:Authentication_Method_wtf}\]
+
+
+# IvTicketCreator
+# ReloadablePropertiesPlaceholderConfigurer
+DEBUG_IvTicketCreator %{DDSECLOG}(Estructura de respuesta\s+\[%{WORD:ResponseStructure}\]\s+construida con éxito.|Recuperado\s+username\s+\[%{FIELDNAME:bbvauserID}\] por el parametro \[%{WORD:attr_wtf}\])
+
+
+# ReloadablePropertiesPlaceholderConfigurer
+DEBUG_DYNAMICPROPERTY %{DDSECLOG}Agregando propiedad dinámica\s+:\s+%{WORD:DynamicProperty}\s+%{DYNAMICDATA}
+
+# ConectorLDAPImpl
+DEBUG_Validando_usuario %{DDSECLOG}Validando usuario\s+%{FIELDNAME:WTF_userID}\s+contra el LDAP %{WORD:Ldap_Name}
+
+# InvocacionAgenteAutenticacion
+DEBUG_Comprobando_permiso %{DDSECLOG}Comprobando permiso del aap\s*%{FIELDNAME:AAP_wtf}\s*para usar la C\.A\. de código\s*%{WORD:SEC_Tag}
+
+## ----------------------------------------------------------------------------------------------------------------------------------
+## INFO
+## ----------------------------------------------------------------------------------------------------------------------------------
+
+# AutenticacionEjecutorImpl
+INFO_Datos_CA %{DDSECLOG}Datos establecidos tras paso por la CA:\s+\{\(aap:\s*(?:%{FIELDNAME:AAP_wtf})?\),\(idUser:\s*(?:%{FIELDNAME:bbvauserID_wtf})?\s*\),\(authMethod\(effective\):\s*(?:%{NUMBER:SEC_authMethod_wtf})?\s*\)\}
+
+# InvocacionAgenteAutenticacion
+INFO_invocacion %{DDSECLOG}Iniciando invocación del agente\s+\[\s*%{FIELDNAME:agent_wtf}\s*\]\s+para el usuario\s+\[\s*%{FIELDNAME:bbvauserID}\s*\]
+
+# IvTicketCreator
+INFO_generados %{DDSECLOG}Generados\s+%{NUMBER:SEC_iv-ticket-generated}\s+iv-tickets.\s+Código de retorno HTTP\s+%{NUMBER:HTTP_code}
+
+# LdapAgenteAutenticacion
+INFO_raro %{DDSECLOG}Configurando agente de autenticación por usuario y password:\s+%{FIELDNAME:SEC_WTF_magicCookie}
+INFO_Procesando_peticion %{DDSECLOG}Procesando petición de autenticación - idUser\s+=>\s*%{FIELDNAME:WTF_userID}\s*,\s*aap =>\s*%{FIELDNAME:AAP_wtf}
+
+# LogManager
+INFO_UA %{DDSECLOG}Configurado el log para la UA\s*%{UA_NAME}
+
+# MapaControladoresAutenticacionFactory
+INFO_encontradas %{DDSECLOG}Encontradas\s*%{NUMBER:SEC_num_instance}\s*instancia\(s\)
+INFO_anadiendo  %{DDSECGENERIC}Añadiendo instancia con código\s*%{NUMBER:SEC_num_instance}\s*, de tipo\s+%{FIELDNAME:SEC_WTF}
+
+# PreServiceImpl
+INFO_Etiquetas_necesarias %{DDSECGENERIC}Etiquetas necesarias para esta petición:\s*\[%{SETTAGTYPE}\]
+
+# Properties
+INFO_file %{DDSECGENERIC}(Cargando propiedades de location URL|Registrando fichero de propiedades)\s*\[*%{SEC_PROPERTIES_FILE}\]*\.
+
+## ----------------------------------------------------------------------------------------------------------------------------------
+## ERROR
+## ----------------------------------------------------------------------------------------------------------------------------------
+
+# Autenticacion
+# PreEjecucion
+ERROR_SAS_code %{DDSECLOG}Codigo SAS %{NUMBER:SAS_Number}\s+-\s+código HTTP %{NUMBER:HTTP_code}\s+-\s+Mensaje de error:\s+\"%{GREEDYDATA:HTTP_Message}\"
+
+ERROR_JBOSS_message %{DDSECLOG}((Error al invocar al agente)|(La invocación del servicio de autenticación terminó en error)|(La invocación del pre\-proceso terminó en error)|(Error en el pre\-proceso))\s*%{JBOSSERROR}
+
+## ----------------------------------------------------------------------------------------------------------------------------------
+## WARN
+## ----------------------------------------------------------------------------------------------------------------------------------
+WARN_DYNAMICPROPERTY %{DDSECLOG}La propiedad dinámica\s+%{WORD:DynamicProperty}\s+%{DYNAMICDATA}
+
+
+## ----------------------------------------------------------------------------------------------------------------------------------
